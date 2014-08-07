@@ -52,6 +52,20 @@ def blog_index():
 
     return bottle.template('blog_template', dict(myposts=l, username=username))
 
+# The main page of the blog, filtered by tag
+@bottle.route('/tag/<tag>')
+def posts_by_tag(tag="notfound"):
+
+    cookie = bottle.request.get_cookie("session")
+    tag = cgi.escape(tag)
+
+    username = sessions.get_username(cookie)
+
+    # even if there is no logged in user, we can show the blog
+    l = posts.get_posts_by_tag(tag, 10)
+
+    return bottle.template('blog_template', dict(myposts=l, username=username))
+
 
 # Displays a particular blog post
 @bottle.get("/post/<permalink>")
@@ -109,6 +123,27 @@ def post_new_comment():
         posts.add_comment(permalink, name, email, body)
 
         bottle.redirect("/post/" + permalink)
+
+# used to process a like on a blog post
+@bottle.post('/like')
+def post_comment_like():
+    permalink = bottle.request.forms.get("permalink")
+    permalink = cgi.escape(permalink)
+
+    comment_ordinal_str = bottle.request.forms.get("comment_ordinal")
+
+    comment_ordinal = int(comment_ordinal_str)
+
+    post = posts.get_post_by_permalink(permalink)
+    if post is None:
+        bottle.redirect("/post_not_found")
+        return
+
+    # it all looks good. increment the ordinal
+    posts.increment_likes(permalink, comment_ordinal)
+
+    bottle.redirect("/post/" + permalink)
+
 
 
 @bottle.get("/post_not_found")
